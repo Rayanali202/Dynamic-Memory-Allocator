@@ -65,10 +65,26 @@ void *get_payload(memory_block_t *block);
 */
 memory_block_t *get_block(void *payload);
 
+/*Checks if block of memory casted to memory_block_t is really a memory block
+* by checking 4th and 2nd bits to see if they are 1 
+*/
 bool is_memory_block(memory_block_t *block);
 
+/* Finds and returns the first free head that is large enough to hold size amount
+* of memory.
+*/
 memory_block_t *find(size_t size);
+
+/*When no free block is found with enough space this block block extends the memory heap
+* by adding a new sbrk block. Returns a pointer to the free block header in the memory at the
+* start of the newly created sbrk block.
+*/
 memory_block_t *extend(size_t size);
+
+/*Splits free block into a free and allocated block if malloc request size
+* plus sizeof(memory_block_struct) is less than the size of the original free block that
+* is about to be split.
+*/
 memory_block_t *split(memory_block_t *block, size_t size);
 memory_block_t *coalesce(memory_block_t *block);
 

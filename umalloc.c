@@ -138,6 +138,10 @@ memory_block_t *extend(size_t size) {
 /*
  *  STUDENT TODO:
  *      Describe how you chose to split allocated blocks. Always? Sometimes? Never? Which end?
+ *      I chose to split the blocks when there was enough space to add the size requested from malloc
+ *      a memory_block_t struct.
+ *      Otherwise there would be no split and the extra space would be added to the payload returned by
+ *      malloc.
 */
 
 /*
@@ -206,6 +210,9 @@ void *umalloc(size_t size) {
 /*
  *  STUDENT TODO:
  *      Describe your free block insertion policy.
+ *      Simply frees the memory block given in the parameter by calling
+ *      deallocate(). Then traverses the free head list to find the last free block,
+ *      and sets the the last free blocks next ptr to the newly deallocated block.
 */
 
 /*
