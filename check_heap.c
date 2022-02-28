@@ -76,7 +76,6 @@ int check_heap() {
            if(get_size(header) % ALIGNMENT != 0){
                return -1;
            }
-
            header = (memory_block_t *)end;
            start = end;
            end = start + (uint64_t)get_size(header);
