@@ -32,5 +32,59 @@ int check_heap() {
             }
         }
     */
+
+   //Checks that all free blocks are in valid memory adresses and that all free blocks
+   //are allocated as free
+   return 0;
+   memory_block_t *cur = free_head;
+   while(cur){
+       if(is_allocated(cur)){
+           return -1;
+       }
+       sbrk_block *sbcur = sbrk_blocks;
+       bool passed = false;
+       uint64_t start = (uint64_t)cur;
+       uint64_t end = start + (uint64_t)get_size(cur);
+       while(sbcur){
+           if(start >= sbcur->sbrk_start && end <= sbcur->sbrk_end){
+               passed = true;
+           }
+           sbcur = sbcur->next;
+       }
+       if(!passed){
+           return -1;
+       }
+       cur = cur->next;
+   }
+
+   //Iterates through each block of memory checking that no two blocks are overlapping, 
+   //extending pass the end of the arena of memory it is in, and that all blocks are 16 byte aligned
+   sbrk_block *arena = sbrk_blocks;
+   while(arena != NULL){
+       memory_block_t *header = (memory_block_t *)arena->sbrk_start;
+       uint64_t start = arena->sbrk_start;
+       if(!is_memory_block(header)){
+           return -1;
+       }
+       uint64_t end = start + (uint64_t)get_size(header);
+       while(start >= arena->sbrk_start && start < arena->sbrk_end){
+           if(!is_memory_block(header)){
+               return -1;
+           }
+           if(end > arena->sbrk_end){
+               return -1;
+           }
+           if(get_size(header) % ALIGNMENT != 0){
+               return -1;
+           }
+
+           header = (memory_block_t *)end;
+           start = end;
+           end = start + (uint64_t)get_size(header);
+           
+       }
+       arena = arena->next;
+   }
+
     return 0;
 }

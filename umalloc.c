@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-const char author[] = ANSI_BOLD ANSI_COLOR_RED "REPLACE THIS WITH YOUR NAME AND UT EID" ANSI_RESET;
+const char author[] = ANSI_BOLD ANSI_COLOR_RED "Rayan Ali ra37589" ANSI_RESET;
 
 /*
  * The following helpers can be used to interact with the memory_block_t
@@ -13,6 +13,8 @@ const char author[] = ANSI_BOLD ANSI_COLOR_RED "REPLACE THIS WITH YOUR NAME AND 
 
 // A sample pointer to the start of the free list.
 memory_block_t *free_head;
+
+bool initialized = false;
 
 /*
  * is_allocated - returns true if a block is marked as allocated.
@@ -65,6 +67,8 @@ void put_block(memory_block_t *block, size_t size, bool alloc) {
     assert(size % ALIGNMENT == 0);
     assert(alloc >> 1 == 0);
     block->block_size_alloc = size | alloc;
+    block->block_size_alloc |= 0x4;
+    block->block_size_alloc |= 0x2;
     block->next = NULL;
 }
 
@@ -84,9 +88,16 @@ memory_block_t *get_block(void *payload) {
     return ((memory_block_t *)payload) - 1;
 }
 
+bool is_memory_block(memory_block_t *block) {
+    assert(block != NULL);
+    return block->block_size_alloc & 0x4 && block->block_size_alloc & 0x2;
+}
+
 /*
  *  STUDENT TODO:
  *      Describe how you select which free block to allocate. What placement strategy are you using?
+ *      I chose to implement a first fit strategy, so the first free block that has enough space to hold
+ *      the memory we want to allocate is chosen.
  */
 
 /*
@@ -94,6 +105,16 @@ memory_block_t *get_block(void *payload) {
  */
 memory_block_t *find(size_t size) {
     //? STUDENT TODO
+    memory_block_t *temp = free_head;
+    while(temp != NULL){
+        if(temp->block_size_alloc == size)
+            return temp;
+        if(temp->block_size_alloc > size + sizeof(memory_block_t))
+            return split(temp, size);
+        if(temp->block_size_alloc > size)
+            return temp;
+        temp = temp->next;
+    }
     return NULL;
 }
 
@@ -102,7 +123,16 @@ memory_block_t *find(size_t size) {
  */
 memory_block_t *extend(size_t size) {
     //? STUDENT TODO
-    return NULL;
+    int extendo = (int) (size / PAGESIZE);
+    extendo++;
+    memory_block_t *temp = (memory_block_t *)csbrk(extendo * PAGESIZE);
+    put_block(temp, extendo * PAGESIZE, false);
+    memory_block_t *fre = free_head;
+    while(fre->next != NULL){
+        fre = fre->next;
+    }
+    fre->next = temp;
+    return temp;
 }
 
 /*
@@ -115,7 +145,14 @@ memory_block_t *extend(size_t size) {
  */
 memory_block_t *split(memory_block_t *block, size_t size) {
     //? STUDENT TODO
-    return NULL;
+    block->block_size_alloc = get_size(block) - size;
+    deallocate(block);
+    block->block_size_alloc |= 0x4;
+    block->block_size_alloc |= 0x2;
+    int sizzurp = (int)(get_size(block)/ALIGNMENT);
+    memory_block_t *mllc = block + sizzurp;
+    put_block(mllc, size, true);
+    return mllc;
 }
 
 /*
@@ -134,6 +171,9 @@ memory_block_t *coalesce(memory_block_t *block) {
  */
 int uinit() {
     //* STUDENT TODO
+    void *ptr = csbrk(3 * PAGESIZE);
+    free_head = (memory_block_t *)ptr;
+    put_block(free_head, 3 * PAGESIZE, false);
     return 0;
 }
 
@@ -142,7 +182,25 @@ int uinit() {
  */
 void *umalloc(size_t size) {
     //* STUDENT TODO
-    return NULL;
+    if(!initialized){
+        uinit();
+        initialized = true;
+    }
+    memory_block_t *mllc;
+    if(size % ALIGNMENT == 0){
+        mllc = find(size + sizeof(memory_block_t));
+    }
+    else{
+        size = size + (ALIGNMENT - (size % ALIGNMENT));
+        mllc = find(size + sizeof(memory_block_t));
+    }
+
+    if(mllc == NULL){
+        extend(size);
+    }
+    mllc = find(size + sizeof(memory_block_t));
+    allocate(mllc);
+    return get_payload(mllc);
 }
 
 /*
@@ -156,4 +214,12 @@ void *umalloc(size_t size) {
  */
 void ufree(void *ptr) {
     //* STUDENT TODO
+    memory_block_t *temp = get_block(ptr);
+    memory_block_t *fre = free_head;
+    deallocate(temp);
+    while(fre->next != NULL){
+        fre = fre->next;
+    }
+    fre->next = temp;
+
 }
