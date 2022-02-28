@@ -35,7 +35,6 @@ int check_heap() {
 
    //Checks that all free blocks are in valid memory adresses and that all free blocks
    //are allocated as free
-   return 0;
    memory_block_t *cur = free_head;
    while(cur){
        if(is_allocated(cur)){
