@@ -37,16 +37,24 @@ int check_heap() {
    //are allocated as free
    memory_block_t *cur = free_head;
    while(cur){
+       //if free block is marked as allocated returns error flag
        if(is_allocated(cur)){
+           return -1;
+       }
+       if(!is_memory_block(cur)){
            return -1;
        }
        sbrk_block *sbcur = sbrk_blocks;
        bool passed = false;
        uint64_t start = (uint64_t)cur;
        uint64_t end = start + (uint64_t)get_size(cur);
+
+       //Iterates through sbrk blocks to check if free block is within a valid
+       //heap address
        while(sbcur){
            if(start >= sbcur->sbrk_start && end <= sbcur->sbrk_end){
                passed = true;
+               break;
            }
            sbcur = sbcur->next;
        }
@@ -76,6 +84,9 @@ int check_heap() {
            if(get_size(header) % ALIGNMENT != 0){
                return -1;
            }
+           if(end == arena->sbrk_end){
+               break;
+           }
            header = (memory_block_t *)end;
            start = end;
            end = start + (uint64_t)get_size(header);
@@ -83,6 +94,7 @@ int check_heap() {
        }
        arena = arena->next;
    }
+   
 
     return 0;
 }

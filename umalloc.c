@@ -14,8 +14,6 @@ const char author[] = ANSI_BOLD ANSI_COLOR_RED "Rayan Ali ra37589" ANSI_RESET;
 // A sample pointer to the start of the free list.
 memory_block_t *free_head;
 
-bool initialized = false;
-
 /*
  * is_allocated - returns true if a block is marked as allocated.
  */
@@ -115,7 +113,7 @@ memory_block_t *find(size_t size) {
             return temp;
         temp = temp->next;
     }
-    return NULL;
+    return extend(size);
 }
 
 /*
@@ -132,7 +130,7 @@ memory_block_t *extend(size_t size) {
         fre = fre->next;
     }
     fre->next = temp;
-    return temp;
+    return find(size);
 }
 
 /*
@@ -164,7 +162,26 @@ memory_block_t *split(memory_block_t *block, size_t size) {
  */
 memory_block_t *coalesce(memory_block_t *block) {
     //? STUDENT TODO
-    return NULL;
+    int sizzurp = (int)(get_size(block)/ALIGNMENT);
+    memory_block_t *next = block + sizzurp;
+    assert(next != NULL);
+    if(is_allocated(next))
+        return NULL;
+
+    memory_block_t *fre = free_head;
+    memory_block_t *prev = NULL;
+    while(fre){
+        if((uint64_t)fre == (uint64_t)next){
+            prev->next = fre->next;
+        }
+        prev = fre;
+        fre = fre->next; 
+    }
+
+    block->block_size_alloc += get_size(next);
+    block->block_size_alloc |= 0x4;
+    block->block_size_alloc |= 0x2;
+    return block;
 }
 
 
@@ -186,10 +203,6 @@ int uinit() {
  */
 void *umalloc(size_t size) {
     //* STUDENT TODO
-    if(!initialized){
-        uinit();
-        initialized = true;
-    }
     memory_block_t *mllc;
     if(size % ALIGNMENT == 0){
         mllc = find(size + sizeof(memory_block_t));
@@ -198,12 +211,24 @@ void *umalloc(size_t size) {
         size = size + (ALIGNMENT - (size % ALIGNMENT));
         mllc = find(size + sizeof(memory_block_t));
     }
-
-    if(mllc == NULL){
-        extend(size);
-    }
-    mllc = find(size + sizeof(memory_block_t));
     allocate(mllc);
+    if(is_allocated(free_head)){
+        free_head = free_head->next;
+    }
+    else{
+        memory_block_t *cur = free_head;
+        memory_block_t *prev = NULL;
+        bool updated = false;
+        while(!updated && cur != NULL){
+            if(is_allocated(cur)){
+                prev->next = cur->next;
+                updated = true;
+            }
+            prev = cur;
+            cur = cur->next;
+        }
+
+    }
     return get_payload(mllc);
 }
 
@@ -228,5 +253,5 @@ void ufree(void *ptr) {
         fre = fre->next;
     }
     fre->next = temp;
-
+    //coalesce(temp);
 }
