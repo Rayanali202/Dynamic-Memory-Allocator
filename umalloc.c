@@ -107,7 +107,7 @@ memory_block_t *find(size_t size) {
     while(temp != NULL){
         if(temp->block_size_alloc == size)
             return temp;
-        if(temp->block_size_alloc > size + sizeof(memory_block_t))
+        if(temp->block_size_alloc > size + (5 * sizeof(memory_block_t)))
             return split(temp, size);
         if(temp->block_size_alloc > size)
             return temp;
