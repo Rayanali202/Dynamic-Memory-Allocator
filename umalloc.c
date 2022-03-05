@@ -162,7 +162,7 @@ memory_block_t *split(memory_block_t *block, size_t size) {
  */
 memory_block_t *coalesce(memory_block_t *block) {
     //? STUDENT TODO
-    uint64_t end = (uint64_t)block + get_size(block);
+    /*uint64_t end = (uint64_t)block + get_size(block);
     bool passed = false;
     memory_block_t *fre = free_head;
     while(fre){
@@ -195,6 +195,17 @@ memory_block_t *coalesce(memory_block_t *block) {
     block->block_size_alloc += get_size(next);
     block->block_size_alloc |= 0x4;
     block->block_size_alloc |= 0x2;
+    */
+    uint64_t end = (uint64_t)block + get_size(block);
+    if(block->next == NULL)
+        return block;
+
+    if(end == (uint64_t)block->next){
+        block->block_size_alloc += get_size(block->next);
+        block->block_size_alloc |= 0x4;
+        block->block_size_alloc |= 0x2;
+        block->next = block->next->next;
+    }
     return block;
 }
 
@@ -283,5 +294,5 @@ void ufree(void *ptr) {
             fre->next = temp;
         }
     }
-    //coalesce(temp);
+    coalesce(temp);
 }
