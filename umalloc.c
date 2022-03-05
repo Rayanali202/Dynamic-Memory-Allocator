@@ -162,22 +162,36 @@ memory_block_t *split(memory_block_t *block, size_t size) {
  */
 memory_block_t *coalesce(memory_block_t *block) {
     //? STUDENT TODO
+    uint64_t end = (uint64_t)block + get_size(block);
+    bool passed = false;
+    memory_block_t *fre = free_head;
+    while(fre){
+        if((uint64_t)fre == end){
+            passed = true;
+            break;
+        }
+    }
+    if(!passed){
+        return NULL;
+    }
+
     int sizzurp = (int)(get_size(block)/ALIGNMENT);
     memory_block_t *next = block + sizzurp;
-    assert(next != NULL);
+    if(block == NULL)
+        return NULL;
     if(is_allocated(next))
         return NULL;
-
-    memory_block_t *fre = free_head;
+    allocate(next);
+    fre = free_head;
     memory_block_t *prev = NULL;
     while(fre){
-        if((uint64_t)fre == (uint64_t)next){
+        if(is_allocated(fre)){
             prev->next = fre->next;
         }
         prev = fre;
         fre = fre->next; 
     }
-
+    deallocate(next);
     block->block_size_alloc += get_size(next);
     block->block_size_alloc |= 0x4;
     block->block_size_alloc |= 0x2;
@@ -249,9 +263,25 @@ void ufree(void *ptr) {
     memory_block_t *temp = get_block(ptr);
     memory_block_t *fre = free_head;
     deallocate(temp);
-    while(fre->next != NULL){
-        fre = fre->next;
+    uint64_t end = (uint64_t)temp;
+    if(end < (uint64_t)free_head){
+        temp->next = free_head;
+        free_head = temp;
     }
-    fre->next = temp;
+    else{
+        bool passed = false;
+        while(fre != NULL && fre->next != NULL){
+            if((uint64_t)fre < end && (uint64_t)fre->next > end){
+                temp->next = fre->next;
+                fre = temp;
+                passed = true;
+                break;
+            }
+            fre = fre->next;
+        }
+        if(!passed){
+            fre->next = temp;
+        }
+    }
     //coalesce(temp);
 }
