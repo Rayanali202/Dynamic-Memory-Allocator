@@ -107,7 +107,7 @@ memory_block_t *find(size_t size) {
     while(temp != NULL){
         if(temp->block_size_alloc == size)
             return temp;
-        if(temp->block_size_alloc > size + (5 * sizeof(memory_block_t)))
+        if(temp->block_size_alloc > size + sizeof(memory_block_t))
             return split(temp, size);
         if(temp->block_size_alloc > size)
             return temp;
@@ -162,49 +162,27 @@ memory_block_t *split(memory_block_t *block, size_t size) {
  */
 memory_block_t *coalesce(memory_block_t *block) {
     //? STUDENT TODO
-    /*uint64_t end = (uint64_t)block + get_size(block);
-    bool passed = false;
-    memory_block_t *fre = free_head;
-    while(fre){
-        if((uint64_t)fre == end){
-            passed = true;
-            break;
-        }
-    }
-    if(!passed){
-        return NULL;
-    }
-
-    int sizzurp = (int)(get_size(block)/ALIGNMENT);
-    memory_block_t *next = block + sizzurp;
-    if(block == NULL)
-        return NULL;
-    if(is_allocated(next))
-        return NULL;
-    allocate(next);
-    fre = free_head;
-    memory_block_t *prev = NULL;
-    while(fre){
-        if(is_allocated(fre)){
-            prev->next = fre->next;
-        }
-        prev = fre;
-        fre = fre->next; 
-    }
-    deallocate(next);
-    block->block_size_alloc += get_size(next);
-    block->block_size_alloc |= 0x4;
-    block->block_size_alloc |= 0x2;
-    */
     uint64_t end = (uint64_t)block + get_size(block);
-    if(block->next == NULL)
-        return block;
+    //if(block->next == NULL)
+    //    return block;
 
     if(end == (uint64_t)block->next){
         block->block_size_alloc += get_size(block->next);
         block->block_size_alloc |= 0x4;
         block->block_size_alloc |= 0x2;
         block->next = block->next->next;
+    }
+
+    memory_block_t *fre = free_head;
+    while(fre){
+        if((uint64_t)fre + get_size(fre) == (uint64_t)block){
+            fre->block_size_alloc += get_size(block);
+            fre->block_size_alloc |= 0x4;
+            fre->block_size_alloc |= 0x2;
+            fre->next = block->next;
+            break;
+        }
+        fre = fre->next;
     }
     return block;
 }
@@ -248,6 +226,7 @@ void *umalloc(size_t size) {
             if(is_allocated(cur)){
                 prev->next = cur->next;
                 updated = true;
+                break;
             }
             prev = cur;
             cur = cur->next;
