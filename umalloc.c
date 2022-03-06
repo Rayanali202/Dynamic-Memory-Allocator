@@ -141,7 +141,6 @@ memory_block_t *find(size_t size) {
     if(get_size(closest_fit) > size)
             return closest_fit;
     return extend(size);
-    
 }
 
 /*
