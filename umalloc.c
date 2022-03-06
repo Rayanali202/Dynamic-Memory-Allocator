@@ -106,13 +106,13 @@ memory_block_t *find(size_t size) {
     memory_block_t *fre = free_head;
     //searches through free head list looking
     memory_block_t *closest_fit = free_head;
-    int min = INT_LEAST32_MAX;
+    size_t min = 1000000;
     while(fre != NULL){
         if(get_size(fre) == size){
             return fre;
         }
         else if(get_size(fre) > size){
-            int difference = get_size(fre) - size;
+            size_t difference = get_size(fre) - size;
             if(difference < min){
                 min = difference;
                 closest_fit = fre;
@@ -120,13 +120,28 @@ memory_block_t *find(size_t size) {
         }
         fre = fre->next;
     }
+
+    /*memory_block_t *temp = free_head;
+    while(temp != NULL){
+        if(temp->block_size_alloc == size)
+            return temp;
+        if(temp->block_size_alloc > size + sizeof(memory_block_t))
+            return split(temp, size);
+        if(temp->block_size_alloc > size)
+            return temp;
+        temp = temp->next;
+    }
+    return extend(size);
+    */
+
     
     
-    if(get_size(closest_fit) > size + sizeof(memory_block_t))
+   if(get_size(closest_fit) > size + sizeof(memory_block_t))
             return split(closest_fit, size);
     if(get_size(closest_fit) > size)
             return closest_fit;
     return extend(size);
+    
 }
 
 /*
@@ -190,7 +205,7 @@ memory_block_t *coalesce(memory_block_t *block) {
     }
 
     //coalesces current block with free block directly before it
-    memory_block_t *fre = free_head;
+    /*memory_block_t *fre = free_head;
     while(fre){
         if((uint64_t)fre + get_size(fre) == (uint64_t)block){
             fre->block_size_alloc += get_size(block);
@@ -201,6 +216,7 @@ memory_block_t *coalesce(memory_block_t *block) {
         }
         fre = fre->next;
     }
+    */
     return block;
 }
 
