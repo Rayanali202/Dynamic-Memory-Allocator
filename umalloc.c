@@ -103,16 +103,29 @@ bool is_memory_block(memory_block_t *block) {
  */
 memory_block_t *find(size_t size) {
     //? STUDENT TODO
-    memory_block_t *temp = free_head;
-    while(temp != NULL){
-        if(temp->block_size_alloc == size)
-            return temp;
-        if(temp->block_size_alloc > size + sizeof(memory_block_t))
-            return split(temp, size);
-        if(temp->block_size_alloc > size)
-            return temp;
-        temp = temp->next;
+    memory_block_t *fre = free_head;
+    //searches through free head list looking
+    memory_block_t *closest_fit = free_head;
+    int min = INT_LEAST32_MAX;
+    while(fre != NULL){
+        if(get_size(fre) == size){
+            return fre;
+        }
+        else if(get_size(fre) > size){
+            int difference = get_size(fre) - size;
+            if(difference < min){
+                min = difference;
+                closest_fit = fre;
+            }
+        }
+        fre = fre->next;
     }
+    
+    
+    if(get_size(closest_fit) > size + sizeof(memory_block_t))
+            return split(closest_fit, size);
+    if(get_size(closest_fit) > size)
+            return closest_fit;
     return extend(size);
 }
 
@@ -121,6 +134,8 @@ memory_block_t *find(size_t size) {
  */
 memory_block_t *extend(size_t size) {
     //? STUDENT TODO
+    //extendo is the number we want to multiply PAGESIZE by to get the size parameter
+    //for the csbrk function call
     int extendo = (int) (size / PAGESIZE);
     extendo++;
     memory_block_t *temp = (memory_block_t *)csbrk(extendo * PAGESIZE);
@@ -137,7 +152,7 @@ memory_block_t *extend(size_t size) {
  *  STUDENT TODO:
  *      Describe how you chose to split allocated blocks. Always? Sometimes? Never? Which end?
  *      I chose to split the blocks when there was enough space to add the size requested from malloc
- *      a memory_block_t struct.
+ *      and an extra memory_block_t struct.
  *      Otherwise there would be no split and the extra space would be added to the payload returned by
  *      malloc.
 */
@@ -166,6 +181,7 @@ memory_block_t *coalesce(memory_block_t *block) {
     //if(block->next == NULL)
     //    return block;
 
+    //coalesces current block with free block directly after it
     if(end == (uint64_t)block->next){
         block->block_size_alloc += get_size(block->next);
         block->block_size_alloc |= 0x4;
@@ -173,6 +189,7 @@ memory_block_t *coalesce(memory_block_t *block) {
         block->next = block->next->next;
     }
 
+    //coalesces current block with free block directly before it
     memory_block_t *fre = free_head;
     while(fre){
         if((uint64_t)fre + get_size(fre) == (uint64_t)block){
@@ -207,6 +224,7 @@ int uinit() {
 void *umalloc(size_t size) {
     //* STUDENT TODO
     memory_block_t *mllc;
+    //ensures size given to find function is 16 byte aligned
     if(size % ALIGNMENT == 0){
         mllc = find(size + sizeof(memory_block_t));
     }
@@ -215,6 +233,8 @@ void *umalloc(size_t size) {
         mllc = find(size + sizeof(memory_block_t));
     }
     allocate(mllc);
+
+    //removes allocated block from free head list
     if(is_allocated(free_head)){
         free_head = free_head->next;
     }
@@ -240,8 +260,9 @@ void *umalloc(size_t size) {
  *  STUDENT TODO:
  *      Describe your free block insertion policy.
  *      Simply frees the memory block given in the parameter by calling
- *      deallocate(). Then traverses the free head list to find the last free block,
- *      and sets the the last free blocks next ptr to the newly deallocated block.
+ *      deallocate(). Then traverses the free head list to find the correct
+ *      location in the list where the new free block should be inserted. Free head
+ *      list is in order based on adresses of memory blocks.
 */
 
 /*
@@ -254,12 +275,17 @@ void ufree(void *ptr) {
     memory_block_t *fre = free_head;
     deallocate(temp);
     uint64_t end = (uint64_t)temp;
+
+    //checks if newly freed block is before the first element in the free head list in 
+    //memory
     if(end < (uint64_t)free_head){
         temp->next = free_head;
         free_head = temp;
     }
     else{
         bool passed = false;
+        //searches through free head list to find correct spot for the newly freed block
+        //to be inserted
         while(fre != NULL && fre->next != NULL){
             if((uint64_t)fre < end && (uint64_t)fre->next > end){
                 temp->next = fre->next;
@@ -269,6 +295,8 @@ void ufree(void *ptr) {
             }
             fre = fre->next;
         }
+        //if block is not inserted yet that means it should be the last element in the
+        //free head list
         if(!passed){
             fre->next = temp;
         }
