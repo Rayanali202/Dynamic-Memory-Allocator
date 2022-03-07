@@ -95,7 +95,7 @@ bool is_memory_block(memory_block_t *block) {
  *  STUDENT TODO:
  *      Describe how you select which free block to allocate. What placement strategy are you using?
  *      I chose to implement a best fit strategy, so the free block that has enough space to hold
- *      the memory we want to allocate with the least leftover memory is chosen.
+ *      the memory we want to allocate with the least leftover is chosen.
  */
 
 /*
@@ -103,26 +103,6 @@ bool is_memory_block(memory_block_t *block) {
  */
 memory_block_t *find(size_t size) {
     //? STUDENT TODO
-    
-    memory_block_t *fre = free_head;
-    //searches through free head list looking for best fit
-    memory_block_t *closest_fit = free_head;
-    size_t min = 1000000;
-    while(fre != NULL){
-        if(get_size(fre) == size){
-            return fre;
-        }
-        else if(get_size(fre) > size){
-            size_t difference = get_size(fre) - size;
-            if(difference < min){
-                min = difference;
-                closest_fit = fre;
-            }
-        }
-        fre = fre->next;
-    }
-    
-    /*
     memory_block_t *temp = free_head;
     while(temp != NULL){
         if(temp->block_size_alloc == size)
@@ -134,25 +114,13 @@ memory_block_t *find(size_t size) {
         temp = temp->next;
     }
     return extend(size);
-    */
-    
-
-    
-    
-    if(get_size(closest_fit) > size + sizeof(memory_block_t))
-            return split(closest_fit, size);
-    if(get_size(closest_fit) > size)
-            return closest_fit;
-    return extend(size);
 }
 
 /*
- * extend - extends the heap if more memory is required.
+ * extend - extends the heap if more memory is required
  */
 memory_block_t *extend(size_t size) {
     //? STUDENT TODO
-    //extendo is the number we want to multiply PAGESIZE by to get the size parameter
-    //for the csbrk function call
     int extendo = (int) (size / PAGESIZE);
     extendo++;
     memory_block_t *temp = (memory_block_t *)csbrk(extendo * PAGESIZE);
@@ -169,7 +137,7 @@ memory_block_t *extend(size_t size) {
  *  STUDENT TODO:
  *      Describe how you chose to split allocated blocks. Always? Sometimes? Never? Which end?
  *      I chose to split the blocks when there was enough space to add the size requested from malloc
- *      and an extra memory_block_t struct.
+ *      a memory_block_t struct.
  *      Otherwise there would be no split and the extra space would be added to the payload returned by
  *      malloc.
 */
@@ -195,10 +163,10 @@ memory_block_t *split(memory_block_t *block, size_t size) {
 memory_block_t *coalesce(memory_block_t *block) {
     //? STUDENT TODO
     uint64_t end = (uint64_t)block + get_size(block);
-    if(block->next == NULL)
-        return block;
+    //if(block->next == NULL)
+    //    return block;
 
-    //coalesces current block with free block directly after it
+    //coalesces free block after current block
     if(end == (uint64_t)block->next){
         block->block_size_alloc += get_size(block->next);
         block->block_size_alloc |= 0x4;
@@ -206,7 +174,7 @@ memory_block_t *coalesce(memory_block_t *block) {
         block->next = block->next->next;
     }
 
-    //coalesces current block with free block directly before it
+    //coalesces free block before current block
     memory_block_t *fre = free_head;
     while(fre){
         if((uint64_t)fre + get_size(fre) == (uint64_t)block){
@@ -218,7 +186,6 @@ memory_block_t *coalesce(memory_block_t *block) {
         }
         fre = fre->next;
     }
-    
     return block;
 }
 
@@ -242,26 +209,27 @@ int uinit() {
 void *umalloc(size_t size) {
     //* STUDENT TODO
     memory_block_t *mllc;
-    //ensures size given to find function is 16 byte aligned
+    //ensures size given to find() is 16 byte aligned
     if(size % ALIGNMENT == 0){
         mllc = find(size + sizeof(memory_block_t));
     }
     else{
-        size = ALIGN(size);//size + (ALIGNMENT - (size % ALIGNMENT));
+        size = size + (ALIGNMENT - (size % ALIGNMENT));
         mllc = find(size + sizeof(memory_block_t));
     }
     allocate(mllc);
-
-    //removes allocated block from free head list
+    //removes allocated block from free list
     if(is_allocated(free_head)){
         free_head = free_head->next;
     }
     else{
         memory_block_t *cur = free_head;
         memory_block_t *prev = NULL;
-        while(cur != NULL){
+        bool updated = false;
+        while(!updated && cur != NULL){
             if(is_allocated(cur)){
                 prev->next = cur->next;
+                updated = true;
                 break;
             }
             prev = cur;
@@ -276,9 +244,8 @@ void *umalloc(size_t size) {
  *  STUDENT TODO:
  *      Describe your free block insertion policy.
  *      Simply frees the memory block given in the parameter by calling
- *      deallocate(). Then traverses the free head list to find the correct
- *      location in the list where the new free block should be inserted. Free head
- *      list is in order based on adresses of memory blocks.
+ *      deallocate(). Then traverses the free head list to find the correct spot to put
+ *      new free block based off of memory address. Ascending order.
 */
 
 /*
@@ -291,17 +258,13 @@ void ufree(void *ptr) {
     memory_block_t *fre = free_head;
     deallocate(temp);
     uint64_t end = (uint64_t)temp;
-
-    //checks if newly freed block is before the first element in the free head list in 
-    //memory
+    //find correct spot to put newly freed block
     if(end < (uint64_t)free_head){
         temp->next = free_head;
         free_head = temp;
     }
     else{
         bool passed = false;
-        //searches through free head list to find correct spot for the newly freed block
-        //to be inserted
         while(fre != NULL && fre->next != NULL){
             if((uint64_t)fre < end && (uint64_t)fre->next > end){
                 temp->next = fre->next;
@@ -311,8 +274,7 @@ void ufree(void *ptr) {
             }
             fre = fre->next;
         }
-        //if block is not inserted yet that means it should be the last element in the
-        //free head list
+        //if no spot is found it must be the last element according to memory address
         if(!passed){
             fre->next = temp;
         }
