@@ -104,7 +104,7 @@ bool is_memory_block(memory_block_t *block) {
 memory_block_t *find(size_t size) {
     //? STUDENT TODO
     memory_block_t *fre = free_head;
-    //searches through free head list looking
+    //searches through free head list looking for best fit
     memory_block_t *closest_fit = free_head;
     size_t min = 1000000;
     while(fre != NULL){
@@ -136,7 +136,7 @@ memory_block_t *find(size_t size) {
 
     
     
-   if(get_size(closest_fit) > size + sizeof(memory_block_t))
+    if(get_size(closest_fit) > size + sizeof(memory_block_t))
             return split(closest_fit, size);
     if(get_size(closest_fit) > size)
             return closest_fit;
@@ -192,8 +192,8 @@ memory_block_t *split(memory_block_t *block, size_t size) {
 memory_block_t *coalesce(memory_block_t *block) {
     //? STUDENT TODO
     uint64_t end = (uint64_t)block + get_size(block);
-    //if(block->next == NULL)
-    //    return block;
+    if(block->next == NULL)
+        return block;
 
     //coalesces current block with free block directly after it
     if(end == (uint64_t)block->next){
@@ -216,6 +216,7 @@ memory_block_t *coalesce(memory_block_t *block) {
         fre = fre->next;
     }
     */
+    
     return block;
 }
 
@@ -244,7 +245,7 @@ void *umalloc(size_t size) {
         mllc = find(size + sizeof(memory_block_t));
     }
     else{
-        size = size + (ALIGNMENT - (size % ALIGNMENT));
+        size = ALIGN(size);//size + (ALIGNMENT - (size % ALIGNMENT));
         mllc = find(size + sizeof(memory_block_t));
     }
     allocate(mllc);
@@ -256,11 +257,9 @@ void *umalloc(size_t size) {
     else{
         memory_block_t *cur = free_head;
         memory_block_t *prev = NULL;
-        bool updated = false;
-        while(!updated && cur != NULL){
+        while(cur != NULL){
             if(is_allocated(cur)){
                 prev->next = cur->next;
-                updated = true;
                 break;
             }
             prev = cur;
