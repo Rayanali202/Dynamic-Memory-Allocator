@@ -94,8 +94,8 @@ bool is_memory_block(memory_block_t *block) {
 /*
  *  STUDENT TODO:
  *      Describe how you select which free block to allocate. What placement strategy are you using?
- *      I chose to implement a first fit strategy, so the first free block that has enough space to hold
- *      the memory we want to allocate is chosen.
+ *      I chose to implement a best fit strategy, so the free block that has enough space to hold
+ *      the memory we want to allocate with the least leftover memory is chosen.
  */
 
 /*
@@ -103,6 +103,7 @@ bool is_memory_block(memory_block_t *block) {
  */
 memory_block_t *find(size_t size) {
     //? STUDENT TODO
+    
     memory_block_t *fre = free_head;
     //searches through free head list looking for best fit
     memory_block_t *closest_fit = free_head;
@@ -120,8 +121,9 @@ memory_block_t *find(size_t size) {
         }
         fre = fre->next;
     }
-
-    /*memory_block_t *temp = free_head;
+    
+    /*
+    memory_block_t *temp = free_head;
     while(temp != NULL){
         if(temp->block_size_alloc == size)
             return temp;
@@ -133,6 +135,7 @@ memory_block_t *find(size_t size) {
     }
     return extend(size);
     */
+    
 
     
     
@@ -204,7 +207,7 @@ memory_block_t *coalesce(memory_block_t *block) {
     }
 
     //coalesces current block with free block directly before it
-    /*memory_block_t *fre = free_head;
+    memory_block_t *fre = free_head;
     while(fre){
         if((uint64_t)fre + get_size(fre) == (uint64_t)block){
             fre->block_size_alloc += get_size(block);
@@ -215,7 +218,6 @@ memory_block_t *coalesce(memory_block_t *block) {
         }
         fre = fre->next;
     }
-    */
     
     return block;
 }
